@@ -37,8 +37,8 @@ class LiftCubeSceneCfg(SingleArmTaskSceneCfg):
     front: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/front_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.6, -0.75, 0.38), rot=(0.77337, 0.55078, -0.2374, -0.20537), convention="opengl"
-        ),  # wxyz
+            pos=(-0.6, -0.75, 0.38), rot=(0.55078, -0.2374, -0.20537, 0.77337), convention="opengl"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=40.6,

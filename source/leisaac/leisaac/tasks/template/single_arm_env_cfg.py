@@ -50,8 +50,8 @@ class SingleArmTaskSceneCfg(InteractiveSceneCfg):
     wrist: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/gripper/wrist_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.001, 0.1, -0.04), rot=(-0.404379, -0.912179, -0.0451242, 0.0486914), convention="ros"
-        ),  # wxyz
+            pos=(-0.001, 0.1, -0.04), rot=(-0.912179, -0.0451242, 0.0486914, -0.404379), convention="ros"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=36.5,
@@ -68,8 +68,8 @@ class SingleArmTaskSceneCfg(InteractiveSceneCfg):
     front: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/front_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(0.0, -0.5, 0.6), rot=(0.1650476, -0.9862856, 0.0, 0.0), convention="ros"
-        ),  # wxyz
+            pos=(0.0, -0.5, 0.6), rot=(-0.9862856, 0.0, 0.0, 0.1650476), convention="ros"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=28.7,
