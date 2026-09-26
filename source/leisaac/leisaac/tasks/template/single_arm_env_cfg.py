@@ -17,6 +17,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import FrameTransformerCfg, OffsetCfg, TiledCameraCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.datasets.episode_data import EpisodeData
+from isaaclab_physx.physics import PhysxCfg
 from leisaac.assets.robots.lerobot import SO101_FOLLOWER_CFG
 from leisaac.devices.action_process import init_action_cfg, preprocess_device_action
 from leisaac.enhance.datasets.lerobot_dataset_handler import LeRobotDatasetCfg
@@ -183,13 +184,15 @@ class SingleArmTaskEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.eye = (1.4, -0.9, 1.2)
         self.viewer.lookat = (2.0, -0.5, 1.0)
 
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.friction_correlation_distance = 0.00625
-        self.sim.render.enable_translucency = True
+        self.sim.physics = PhysxCfg(bounce_threshold_velocity=0.01, friction_correlation_distance=0.00625)
 
         self.scene.ee_frame.visualizer_cfg.markers["frame"].scale = (0.05, 0.05, 0.05)
 
         self.default_feature_joint_names = [f"{joint_name}.pos" for joint_name in SINGLE_ARM_JOINT_NAMES]
+
+        # default to joint position actions so generic runners (e.g. isaaclab zero_agent) work without a teleop device
+        if isinstance(self.actions.arm_action, type(MISSING)):
+            self.actions = init_action_cfg(self.actions, device="so101leader")
 
     def use_teleop_device(self, teleop_device) -> None:
         self.task_type = teleop_device
