@@ -1,12 +1,16 @@
-from typing import Literal
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
 
 import isaaclab.sim as sim_utils
 import isaaclab.utils.math as math_utils
 import torch
-from isaaclab.assets import Articulation
-from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.sensors import Camera
+
+if TYPE_CHECKING:
+    from isaaclab.assets import Articulation
+    from isaaclab.envs import ManagerBasedRLEnv
+    from isaaclab.sensors import Camera
 
 
 def randomize_camera_uniform(
@@ -27,13 +31,13 @@ def randomize_camera_uniform(
     """
     asset: Camera = env.scene[asset_cfg.name]
 
-    ori_pos_w = asset.data.pos_w[env_ids]
+    ori_pos_w = asset.data.pos_w.torch[env_ids]
     if convention == "ros":
-        ori_quat_w = asset.data.quat_w_ros[env_ids]
+        ori_quat_w = asset.data.quat_w_ros.torch[env_ids]
     elif convention == "opengl":
-        ori_quat_w = asset.data.quat_w_opengl[env_ids]
+        ori_quat_w = asset.data.quat_w_opengl.torch[env_ids]
     elif convention == "world":
-        ori_quat_w = asset.data.quat_w_world[env_ids]
+        ori_quat_w = asset.data.quat_w_world.torch[env_ids]
 
     range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
     ranges = torch.tensor(range_list, device=asset.device)

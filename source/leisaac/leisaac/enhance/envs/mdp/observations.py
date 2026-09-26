@@ -1,11 +1,17 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import isaaclab.utils.math as math_utils
 import torch
-from isaaclab.assets import Articulation
-from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
 from isaaclab.envs.mdp.observations import image
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.sensors import FrameTransformer
 from leisaac.utils.robot_utils import convert_lekiwi_wheel_action_env2robot
+
+if TYPE_CHECKING:
+    from isaaclab.assets import Articulation
+    from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
+    from isaaclab.sensors import FrameTransformer
 
 
 def overlay_image(
@@ -98,9 +104,9 @@ def ee_frame_state(
     Return the state of the end effector frame in the robot coordinate system.
     """
     robot = env.scene[robot_cfg.name]
-    robot_root_pos, robot_root_quat = robot.data.root_pos_w, robot.data.root_quat_w
+    robot_root_pos, robot_root_quat = robot.data.root_pos_w.torch, robot.data.root_quat_w.torch
     ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    ee_frame_pos, ee_frame_quat = ee_frame.data.target_pos_w[:, 0, :], ee_frame.data.target_quat_w[:, 0, :]
+    ee_frame_pos, ee_frame_quat = ee_frame.data.target_pos_w.torch[:, 0, :], ee_frame.data.target_quat_w.torch[:, 0, :]
     ee_frame_pos_robot, ee_frame_quat_robot = math_utils.subtract_frame_transforms(
         robot_root_pos, robot_root_quat, ee_frame_pos, ee_frame_quat
     )
@@ -116,7 +122,7 @@ def joint_pos_target(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEnti
     """
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
-    return asset.data.joint_pos_target[:, asset_cfg.joint_ids]
+    return asset.data.joint_pos_target.torch[:, asset_cfg.joint_ids]
 
 
 def user_based_velocity_action(
