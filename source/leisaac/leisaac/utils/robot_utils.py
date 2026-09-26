@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 from dataclasses import asdict, dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
-from isaaclab.envs import DirectRLEnv, ManagerBasedEnv
-from isaaclab.sensors import Camera
 from leisaac.assets.robots.lerobot import (
     SO101_FOLLOWER_MOTOR_LIMITS,
     SO101_FOLLOWER_REST_POSE_RANGE,
     SO101_FOLLOWER_USD_JOINT_LIMLITS,
 )
 from leisaac.enhance.datasets.lerobot_dataset_handler import LeRobotDatasetCfg
+
+if TYPE_CHECKING:
+    from isaaclab.envs import DirectRLEnv, ManagerBasedEnv
 
 
 @dataclass
@@ -44,6 +48,9 @@ def build_feature_from_env(env: ManagerBasedEnv | DirectRLEnv, dataset_cfg: LeRo
     """
     Build the feature from the environment.
     """
+    from isaaclab.envs import ManagerBasedEnv
+    from isaaclab.sensors import Camera
+
     features = {}
 
     default_feature_joint_names = env.cfg.default_feature_joint_names

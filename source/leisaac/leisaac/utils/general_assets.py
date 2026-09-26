@@ -1,4 +1,6 @@
-from pxr import Usd, UsdGeom, UsdPhysics
+import json
+import subprocess
+import sys
 
 
 def get_all_prims(stage, prim=None, prims_list=None):
@@ -13,6 +15,8 @@ def get_all_prims(stage, prim=None, prims_list=None):
 
 
 def classify_prim(prim):
+    from pxr import UsdPhysics
+
     if prim.HasAPI(UsdPhysics.ArticulationRootAPI):
         return "Articulation"
     elif prim.HasAPI(UsdPhysics.RigidBodyAPI):
@@ -22,14 +26,20 @@ def classify_prim(prim):
 
 
 def is_articulation_root(prim):
+    from pxr import UsdPhysics
+
     return prim.HasAPI(UsdPhysics.ArticulationRootAPI)
 
 
 def is_rigidbody(prim):
+    from pxr import UsdPhysics
+
     return prim.HasAPI(UsdPhysics.RigidBodyAPI)
 
 
 def get_all_joints(stage):
+    from pxr import UsdPhysics
+
     joints = []
 
     def recurse(prim):
@@ -43,20 +53,24 @@ def get_all_joints(stage):
 
 
 def get_stage(usd_path):
+    from pxr import Usd
+
     stage = Usd.Stage.Open(usd_path)
     return stage
 
 
 def get_prim_pos_rot(prim):
+    from pxr import Usd, UsdGeom
+
     xformable = UsdGeom.Xformable(prim)
     if not xformable:
         return None, None
     matrix = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
     if matrix.Orthonormalize(issueWarning=True):
         rot = matrix.ExtractRotationQuat()
-        rot_list = [rot.GetReal(), rot.GetImaginary()[0], rot.GetImaginary()[1], rot.GetImaginary()[2]]
+        rot_list = [rot.GetImaginary()[0], rot.GetImaginary()[1], rot.GetImaginary()[2], rot.GetReal()]
     else:
-        rot_list = [1, 0, 0, 0]
+        rot_list = [0, 0, 0, 1]
     pos = matrix.ExtractTranslation()
     pos_list = list(pos)
 
@@ -64,6 +78,8 @@ def get_prim_pos_rot(prim):
 
 
 def get_articulation_joints(articulation_prim):
+    from pxr import UsdPhysics
+
     joints = []
 
     def recurse(prim):
@@ -77,6 +93,8 @@ def get_articulation_joints(articulation_prim):
 
 
 def get_joint_type(joint_prim):
+    from pxr import UsdPhysics
+
     joint = UsdPhysics.Joint(joint_prim)
     return joint.GetTypeName()
 
@@ -94,6 +112,8 @@ def is_prismatic_joint(prim):
 
 
 def get_joint_name_and_qpos(joint_prim):
+    from pxr import UsdPhysics
+
     joint = UsdPhysics.Joint(joint_prim)
     return joint.GetName(), joint.GetPositionAttr().Get()
 
@@ -103,11 +123,10 @@ def get_all_joints_without_fixed(articulation_prim):
     return [joint for joint in joints if not is_fixed_joint(joint)]
 
 
-import isaacsim.core.utils.prims as prim_utils
 from isaaclab.assets.articulation import ArticulationCfg
 from isaaclab.assets.rigid_object import RigidObjectCfg
 from isaaclab.sim.spawners.spawner_cfg import RigidObjectSpawnerCfg
-from isaaclab.sim.utils import clone
+from isaaclab.sim.utils import clone, get_current_stage
 
 
 def match_specific_name(prim_path, specific_name_list, exlude_name_list):
@@ -123,14 +142,15 @@ def match_specific_name(prim_path, specific_name_list, exlude_name_list):
 
 @clone
 def spawn_from_prim_path(prim_path, spawn, translation, orientation):
-    return prim_utils.get_prim_at_path(prim_path)
+    return get_current_stage().GetPrimAtPath(prim_path)
 
 
-def parse_usd_and_create_subassets(usd_path, env_cfg, specific_name_list=None, exclude_name_list=None):
+def collect_subassets(usd_path, specific_name_list=None, exclude_name_list=None):
     stage = get_stage(usd_path)
     prims = get_all_prims(stage)
     articulation_sub_prims = list()
     create_attr_record = dict()
+    subassets = list()
     for prim in prims:
         if is_articulation_root(prim) and match_specific_name(
             prim.GetPath().pathString, specific_name_list, exclude_name_list
@@ -148,16 +168,7 @@ def parse_usd_and_create_subassets(usd_path, env_cfg, specific_name_list=None, e
                 name = f"{name}_{create_attr_record[name]}"
             sub_prim_path = orin_prim_path[orin_prim_path.find("/", 1) + 1 :]
             prim_path = f"{{ENV_REGEX_NS}}/Scene/{sub_prim_path}"
-            artcfg = ArticulationCfg(
-                prim_path=prim_path,
-                spawn=None,
-                init_state=ArticulationCfg.InitialStateCfg(
-                    pos=pos,
-                    rot=rot,
-                ),
-                actuators={},
-            )
-            setattr(env_cfg.scene, name, artcfg)
+            subassets.append(("articulation", name, prim_path, pos, rot))
             articulation_sub_prims.extend(get_all_prims(stage, prim))
     for prim in prims:
         if is_rigidbody(prim) and match_specific_name(prim.GetPath().pathString, specific_name_list, exclude_name_list):
@@ -173,6 +184,31 @@ def parse_usd_and_create_subassets(usd_path, env_cfg, specific_name_list=None, e
                 name = f"{name}_{create_attr_record[name]}"
             sub_prim_path = orin_prim_path[orin_prim_path.find("/", 1) + 1 :]
             prim_path = f"{{ENV_REGEX_NS}}/Scene/{sub_prim_path}"
+            subassets.append(("rigid", name, prim_path, pos, rot))
+    return subassets
+
+
+def parse_usd_and_create_subassets(usd_path, env_cfg, specific_name_list=None, exclude_name_list=None):
+    if "pxr" in sys.modules:
+        subassets = collect_subassets(usd_path, specific_name_list, exclude_name_list)
+    else:
+        # Isaac Lab 3.0 builds env cfgs before Kit starts; loading pxr in this process first would break Kit.
+        args = json.dumps([usd_path, specific_name_list, exclude_name_list])
+        out = subprocess.run([sys.executable, __file__, args], check=True, capture_output=True, text=True).stdout
+        subassets = json.loads(out.strip().splitlines()[-1])
+    for kind, name, prim_path, pos, rot in subassets:
+        if kind == "articulation":
+            artcfg = ArticulationCfg(
+                prim_path=prim_path,
+                spawn=None,
+                init_state=ArticulationCfg.InitialStateCfg(
+                    pos=pos,
+                    rot=rot,
+                ),
+                actuators={},
+            )
+            setattr(env_cfg.scene, name, artcfg)
+        else:
             rigidcfg = RigidObjectCfg(
                 prim_path=prim_path,
                 spawn=RigidObjectSpawnerCfg(func=spawn_from_prim_path),
@@ -182,3 +218,7 @@ def parse_usd_and_create_subassets(usd_path, env_cfg, specific_name_list=None, e
                 ),
             )
             setattr(env_cfg.scene, name, rigidcfg)
+
+
+if __name__ == "__main__":
+    print(json.dumps(collect_subassets(*json.loads(sys.argv[1]))))
