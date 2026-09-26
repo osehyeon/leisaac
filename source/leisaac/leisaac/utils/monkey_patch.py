@@ -40,7 +40,8 @@ def patch_termination_manager():
 
 
 def monkey_patch():
-    patch_termination_manager()
+    # fixed in Isaac Lab 3.0; patching would drop TerminationManager._last_episode_dones updates
+    pass
 
 
 monkey_patch()
