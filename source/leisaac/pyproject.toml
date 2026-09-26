@@ -27,6 +27,9 @@ dependencies = [
     "pyserial",
 ]
 
+[project.entry-points."isaaclab.tasks"]
+leisaac = "leisaac.tasks"
+
 [project.urls]
 Homepage = "https://github.com/LightwheelAI/leisaac"
 Repository = "https://github.com/LightwheelAI/leisaac"
