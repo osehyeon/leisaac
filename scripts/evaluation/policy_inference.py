@@ -28,7 +28,7 @@ parser.add_argument(
     "--policy_type",
     type=str,
     default="gr00tn1.5",
-    help="Type of policy to use. support gr00tn1.5, gr00tn1.6, lerobot-<model_type>, openpi",
+    help="Type of policy to use. support gr00tn1.5, gr00tn1.6, lerobot-<model_type>, openpi, random (test only)",
 )
 parser.add_argument("--policy_host", type=str, default="localhost", help="Host of the policy server.")
 parser.add_argument("--policy_port", type=int, default=5555, help="Port of the policy server.")
@@ -125,7 +125,7 @@ class Controller:
 
 def preprocess_obs_dict(obs_dict: dict, model_type: str, language_instruction: str):
     """Preprocess the observation dictionary to the format expected by the policy."""
-    if model_type in ["gr00tn1.5", "gr00tn1.6", "lerobot", "openpi"]:
+    if model_type in ["gr00tn1.5", "gr00tn1.6", "lerobot", "openpi", "random"]:
         obs_dict["task_description"] = language_instruction
         return obs_dict
     else:
@@ -216,6 +216,10 @@ def main():
             camera_keys=[key for key, sensor in env.scene.sensors.items() if isinstance(sensor, Camera)],
             task_type=task_type,
         )
+    elif args_cli.policy_type == "random":
+        from leisaac.policy import RandomPolicy
+
+        policy = RandomPolicy(action_horizon=args_cli.policy_action_horizon, task_type=task_type)
 
     rate_limiter = RateLimiter(args_cli.step_hz)
     controller = Controller()

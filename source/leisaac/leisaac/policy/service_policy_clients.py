@@ -4,6 +4,7 @@ import time
 import grpc
 import numpy as np
 import torch
+from leisaac.assets.robots.lerobot import SO101_FOLLOWER_USD_JOINT_LIMLITS
 from leisaac.utils.constant import SINGLE_ARM_JOINT_NAMES
 from leisaac.utils.robot_utils import (
     convert_leisaac_action_to_lerobot,
@@ -397,3 +398,43 @@ class OpenPIServicePolicyClient(WebsocketServicePolicy):
         processed_action = convert_lerobot_action_to_leisaac(action_chunk)
 
         return torch.from_numpy(processed_action[:, None, :])
+
+
+class RandomPolicy(Policy):
+    """
+    Test-only policy that needs no server: it logs the observation it receives and returns
+    random joint-position chunks moving from the current joint positions to a random target
+    inside the middle half of the SO101 joint limits.
+    """
+
+    def __init__(self, action_horizon: int = 16, task_type: str = "so101leader"):
+        super().__init__("random")
+        if task_type != "so101leader":
+            raise ValueError(f"Task type {task_type} not supported when using random policy.")
+        limits = [SO101_FOLLOWER_USD_JOINT_LIMLITS[name] for name in SINGLE_ARM_JOINT_NAMES]
+        limits = torch.deg2rad(torch.tensor(limits))
+        self.center = limits.mean(dim=1)
+        self.half_range = (limits[:, 1] - limits[:, 0]) / 4
+        self.action_horizon = action_horizon
+        self.num_calls = 0
+
+    def get_action(self, observation_dict: dict) -> torch.Tensor:
+        if self.num_calls == 0:
+            for key, value in observation_dict.items():
+                if isinstance(value, torch.Tensor):
+                    print(f"[RandomPolicy] obs {key}: shape={tuple(value.shape)} dtype={value.dtype}")
+                else:
+                    print(f"[RandomPolicy] obs {key}: {value!r}")
+        joint_pos = observation_dict["joint_pos"].cpu().float()
+        image_means = {
+            key: round(value.float().mean().item(), 1)
+            for key, value in observation_dict.items()
+            if isinstance(value, torch.Tensor) and value.dim() == 4
+        }
+        joint_pos_str = joint_pos[0].numpy().round(3)
+        print(f"[RandomPolicy] call {self.num_calls} joint_pos={joint_pos_str} image_mean={image_means}")
+        self.num_calls += 1
+
+        target = self.center + self.half_range * (2 * torch.rand(joint_pos.shape[-1]) - 1)
+        alpha = torch.linspace(1 / self.action_horizon, 1.0, self.action_horizon)[:, None, None]
+        return joint_pos[None] + alpha * (target - joint_pos[None])
