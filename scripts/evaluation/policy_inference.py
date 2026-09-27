@@ -44,6 +44,8 @@ AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
 app_launcher_args = vars(args_cli)
+# policy observations need camera images; Isaac Lab 3.0 dropped the --enable_cameras flag
+app_launcher_args["enable_cameras"] = True
 
 # launch omniverse app
 app_launcher = AppLauncher(app_launcher_args)
