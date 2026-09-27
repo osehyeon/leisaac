@@ -299,6 +299,7 @@ class LeRobotServicePolicyClient(Policy):
             timestamp=time.time(),
             observation=raw_observation,
             timestep=self.latest_action_step,
+            must_go=True,
         )
 
         # send observation to policy server
