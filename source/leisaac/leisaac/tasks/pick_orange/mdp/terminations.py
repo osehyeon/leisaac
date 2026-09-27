@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import torch
-from isaaclab.assets import RigidObject
-from isaaclab.envs import DirectRLEnv, ManagerBasedRLEnv
 from isaaclab.managers import SceneEntityCfg
 from leisaac.utils.robot_utils import is_so101_at_rest_pose
+
+if TYPE_CHECKING:
+    from isaaclab.assets import RigidObject
+    from isaaclab.envs import DirectRLEnv, ManagerBasedRLEnv
 
 
 def task_done(
@@ -34,15 +38,15 @@ def task_done(
     """
     done = torch.ones(env.num_envs, dtype=torch.bool, device=env.device)
     plate: RigidObject = env.scene[plate_cfg.name]
-    plate_x = plate.data.root_pos_w[:, 0] - env.scene.env_origins[:, 0]
-    plate_y = plate.data.root_pos_w[:, 1] - env.scene.env_origins[:, 1]
-    plate_height = plate.data.root_pos_w[:, 2] - env.scene.env_origins[:, 2]
+    plate_x = plate.data.root_pos_w.torch[:, 0] - env.scene.env_origins[:, 0]
+    plate_y = plate.data.root_pos_w.torch[:, 1] - env.scene.env_origins[:, 1]
+    plate_height = plate.data.root_pos_w.torch[:, 2] - env.scene.env_origins[:, 2]
 
     for orange_cfg in oranges_cfg:
         orange: RigidObject = env.scene[orange_cfg.name]
-        orange_x = orange.data.root_pos_w[:, 0] - env.scene.env_origins[:, 0]
-        orange_y = orange.data.root_pos_w[:, 1] - env.scene.env_origins[:, 1]
-        orange_height = orange.data.root_pos_w[:, 2] - env.scene.env_origins[:, 2]
+        orange_x = orange.data.root_pos_w.torch[:, 0] - env.scene.env_origins[:, 0]
+        orange_y = orange.data.root_pos_w.torch[:, 1] - env.scene.env_origins[:, 1]
+        orange_height = orange.data.root_pos_w.torch[:, 2] - env.scene.env_origins[:, 2]
 
         done = torch.logical_and(done, orange_x < plate_x + x_range[1])
         done = torch.logical_and(done, orange_x > plate_x + x_range[0])
@@ -51,7 +55,7 @@ def task_done(
         done = torch.logical_and(done, orange_height < plate_height + height_range[1])
         done = torch.logical_and(done, orange_height > plate_height + height_range[0])
 
-    joint_pos = env.scene["robot"].data.joint_pos
+    joint_pos = env.scene["robot"].data.joint_pos.torch
     joint_names = env.scene["robot"].data.joint_names
     done = torch.logical_and(done, is_so101_at_rest_pose(joint_pos, joint_names))
 

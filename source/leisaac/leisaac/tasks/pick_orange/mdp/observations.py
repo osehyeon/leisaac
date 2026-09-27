@@ -1,8 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import torch
-from isaaclab.assets import Articulation, RigidObject
-from isaaclab.envs import DirectRLEnv, ManagerBasedRLEnv
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.sensors import FrameTransformer
+
+if TYPE_CHECKING:
+    from isaaclab.assets import Articulation, RigidObject
+    from isaaclab.envs import DirectRLEnv, ManagerBasedRLEnv
+    from isaaclab.sensors import FrameTransformer
 
 
 def orange_grasped(
@@ -18,11 +24,11 @@ def orange_grasped(
     ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
     object: RigidObject = env.scene[object_cfg.name]
 
-    object_pos = object.data.root_pos_w
-    end_effector_pos = ee_frame.data.target_pos_w[:, 1, :]
+    object_pos = object.data.root_pos_w.torch
+    end_effector_pos = ee_frame.data.target_pos_w.torch[:, 1, :]
     pos_diff = torch.linalg.vector_norm(object_pos - end_effector_pos, dim=1)
 
-    grasped = torch.logical_and(pos_diff < diff_threshold, robot.data.joint_pos[:, -1] < grasp_threshold)
+    grasped = torch.logical_and(pos_diff < diff_threshold, robot.data.joint_pos.torch[:, -1] < grasp_threshold)
 
     return grasped
 
@@ -44,18 +50,18 @@ def put_orange_to_plate(
     orange: RigidObject = env.scene[object_cfg.name]
     plate: RigidObject = env.scene[plate_cfg.name]
 
-    plate_x, plate_y = plate.data.root_pos_w[:, 0], plate.data.root_pos_w[:, 1]
-    orange_x, orange_y = orange.data.root_pos_w[:, 0], orange.data.root_pos_w[:, 1]
+    plate_x, plate_y = plate.data.root_pos_w.torch[:, 0], plate.data.root_pos_w.torch[:, 1]
+    orange_x, orange_y = orange.data.root_pos_w.torch[:, 0], orange.data.root_pos_w.torch[:, 1]
     orange_in_plate_x = torch.logical_and(orange_x < plate_x + x_range[1], orange_x > plate_x + x_range[0])
     orange_in_plate_y = torch.logical_and(orange_y < plate_y + y_range[1], orange_y > plate_y + y_range[0])
     orange_in_plate = torch.logical_and(orange_in_plate_x, orange_in_plate_y)
 
-    end_effector_pos = ee_frame.data.target_pos_w[:, 1, :]
-    orange_pos = orange.data.root_pos_w
+    end_effector_pos = ee_frame.data.target_pos_w.torch[:, 1, :]
+    orange_pos = orange.data.root_pos_w.torch
     pos_diff = torch.linalg.vector_norm(orange_pos - end_effector_pos, dim=1)
     ee_near_to_orange = pos_diff < diff_threshold
 
-    gripper_open = robot.data.joint_pos[:, -1] > grasp_threshold
+    gripper_open = robot.data.joint_pos.torch[:, -1] > grasp_threshold
 
     placed = torch.logical_and(orange_in_plate, ee_near_to_orange)
     placed = torch.logical_and(placed, gripper_open)
