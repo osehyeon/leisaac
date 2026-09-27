@@ -13,17 +13,16 @@ def dynamic_reset_gripper_effort_limit_sim(env, teleop_device):
 
 
 def write_gripper_effort_limit_sim(env, env_arm):
-    gripper_pos = env_arm.data.body_link_pos_w[:, -1]  # [num_envs, 3]
-    num_envs = gripper_pos.shape[0]
+    gripper_pos = env_arm.data.body_link_pos_w.torch[:, -1]  # [num_envs, 3]
 
     object_positions = []
     object_masses = []
     object_names = []
 
     for name, obj in env.scene._rigid_objects.items():
-        pos = obj.data.body_link_pos_w[:, 0]  # [num_envs, 3]
+        pos = obj.data.body_link_pos_w.torch[:, 0]  # [num_envs, 3]
         object_positions.append(pos)
-        object_masses.append(obj.data.default_mass)
+        object_masses.append(obj.data.body_mass.torch)
         object_names.append(name)
 
     if not object_positions:
@@ -38,16 +37,16 @@ def write_gripper_effort_limit_sim(env, env_arm):
 
     target_masses = object_masses[min_indices.cpu(), 0, 0]  # [num_envs]
 
-    target_effort_limits = (target_masses / 0.15).to(env_arm._data.joint_effort_limits.device)
+    target_effort_limits = (target_masses / 0.15).to(env_arm.data.joint_effort_limits.torch.device)
 
-    current_effort_limit_sim = env_arm._data.joint_effort_limits[:, -1]  # [num_envs]
+    current_effort_limit_sim = env_arm.data.joint_effort_limits.torch[:, -1]  # [num_envs]
     need_update = torch.abs(target_effort_limits - current_effort_limit_sim) > 0.1
 
     if torch.any(need_update):
         new_limits = current_effort_limit_sim.clone()
         new_limits[need_update] = target_effort_limits[need_update]
 
-        env_arm.write_joint_effort_limit_to_sim(limits=new_limits, joint_ids=[5 for _ in range(num_envs)])
+        env_arm.write_joint_effort_limit_to_sim_index(limits=new_limits.unsqueeze(-1), joint_ids=[5])
 
 
 def get_task_type(task: str, task_type: str | None = None) -> str:
