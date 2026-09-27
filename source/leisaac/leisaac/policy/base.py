@@ -19,8 +19,18 @@ except ImportError:
         ImportWarning,
     )
 
-from .gr00t import serialization
-from .openpi import msgpack_numpy
+try:
+    from .gr00t import serialization
+except ImportError as e:
+    warnings.warn(f"{e}, for full functionality of ZMQServicePolicy", ImportWarning)
+try:
+    from .openpi import msgpack_numpy
+except ImportError:
+    warnings.warn(
+        "msgpack is not installed, please install it with `pip install msgpack` for full functionality of"
+        " WebsocketServicePolicy",
+        ImportWarning,
+    )
 
 
 class Policy(ABC):
